@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: awesome-postgres
+    environment:
+      POSTGRES_USER: awesome
+      POSTGRES_PASSWORD: awesome
+      POSTGRES_DB: awesome
+    ports:
+      # Host 5433 → container 5432 (avoids clash if local Postgres already uses 5432)
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awesome -d awesome"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
