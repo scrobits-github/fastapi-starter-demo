@@ -1,27 +1,41 @@
+"""
+Async database operations for cricketers.
+
+Every function that hits the DB is `async def` and uses `await`.
+That is what makes async/await correct — not the word "database" alone.
+
+Returns:
+  - list / row  → success
+  - None        → not found (get_one only)
+  - False       → error (router turns this into HTTP 500)
+"""
+
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cricketer import Cricketer
 from app.schemas.cricket import Cricket
 
 
-def get_all_cricketers(db: Session) -> list[Cricketer] | bool:
+async def get_all_cricketers(db: AsyncSession) -> list[Cricketer] | bool:
     try:
-        return list(db.scalars(select(Cricketer).order_by(Cricketer.id)).all())
+        result = await db.scalars(select(Cricketer).order_by(Cricketer.id))
+        return list(result.all())
     except Exception as e:
         print(e)
         return False
 
 
-def get_one_cricketer(db: Session, id: int) -> Cricketer | None | bool:
+async def get_one_cricketer(db: AsyncSession, id: int) -> Cricketer | None | bool:
     try:
-        return db.get(Cricketer, id)
+        # await because AsyncSession.get is async
+        return await db.get(Cricketer, id)
     except Exception as e:
         print(e)
         return False
 
 
-def create_cricketer(db: Session, data: Cricket) -> Cricketer | bool:
+async def create_cricketer(db: AsyncSession, data: Cricket) -> Cricketer | bool:
     try:
         row = Cricketer(
             first_name=data.first_name,
@@ -29,10 +43,10 @@ def create_cricketer(db: Session, data: Cricket) -> Cricketer | bool:
             jersey_number=data.jersey_number,
         )
         db.add(row)
-        db.commit()
-        db.refresh(row)
+        await db.commit()      # wait until Postgres saves
+        await db.refresh(row)  # wait until id is loaded
         return row
     except Exception as e:
         print(e)
-        db.rollback()
+        await db.rollback()
         return False
